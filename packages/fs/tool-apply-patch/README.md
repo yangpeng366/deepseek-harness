@@ -3,10 +3,20 @@
 Model-facing `apply_patch` tool for DeepSeek Harness — a TypeScript port of
 [`codex-rs/apply-patch`](https://github.com/openai/codex/tree/main/codex-rs/apply-patch).
 
-## Status (2026-08-25, round 6)
+## Status (2026-08-25, round 7)
 
 All four upstream Rust modules are now ported and tested, plus the
-data-plane and live Cordis wiring:
+data-plane and live Cordis wiring. Round 7 lifts the model-facing prompt
+template out of `apply.ts` into `apply_patch_tool_instructions.md` at the
+package root and loads it via `readFile(import.meta.url)` at apply time.
+
+The current `apply_patch_tool_instructions.md` is a condensed dsh-specific
+paraphrase, not a verbatim copy of `codex-rs/apply-patch/src/lib.rs`
+`APPLY_PATCH_TOOL_INSTRUCTIONS` (which is `include_str!` of the upstream
+`apply_patch_tool_instructions.md` and carries the full codex-rs grammar
+spec). Pulling the upstream file verbatim is tracked separately; this round
+only ships the extraction so the prompt lives next to the package metadata
+and can be overridden by cordis.yml overlay without a TypeScript rebuild.
 
 - `src/markers.ts` — verbatim marker constants from the codex reference
 - `src/types.ts` — `Hunk`, `UpdateFileChunk`, `ApplyPatchArgs`, `ParseError`, `ParseMode`
@@ -18,7 +28,7 @@ data-plane and live Cordis wiring:
   - structured `HunkOutcome` reports (added/updated/deleted/failed)
   - typed error classes: `ApplyPatchParseError`, `AddFileConflictError`, `FileNotFoundError`, `HunkNotAppliedError`, `DeleteNotSupportedError`, `MoveSourceCleanupError`
   - pure `computeUpdatedContent` helper
-- `src/apply.ts` — Cordis `apply(ctx, config)` body: resolves `ctx.fs.writeText/readText` behind a `PatchFileBackend`, falls back to `ctx.shell` for delete, registers the `apply_patch` model-facing tool with `defineTool`. The verbatim codex-rs `APPLY_PATCH_TOOL_DESCRIPTION` text is embedded so the model-side prompt template stays aligned with the upstream.
+- `src/apply.ts` — Cordis `apply(ctx, config)` body: resolves `ctx.fs.writeText/readText` behind a `PatchFileBackend`, falls back to `ctx.shell` for delete, registers the `apply_patch` model-facing tool with `defineTool`. The verbatim codex-rs prompt template lives in `apply_patch_tool_instructions.md` at the package root and is loaded at apply time via `readFile(import.meta.url)`. The file is a condensed paraphrase of `codex-rs/apply-patch/src/lib.rs` `APPLY_PATCH_TOOL_INSTRUCTIONS`; the verbatim upstream grammar spec lives in `codex-rs/apply-patch/apply_patch_tool_instructions.md` and is tracked as a follow-up.
 - `src/streaming-parser.ts` — incremental `StreamingPatchParser` factory (`createStreamingPatchParser()`) mirroring `codex-rs/apply-patch/src/streaming_parser.rs`. `pushDelta(delta)` walks the delta one code-point at a time, accumulating a `lineBuffer` until `\n`; trailing `\r` is stripped so CRLF inputs parse identically to LF. `processLine` dispatches on the active `mode` (`notStarted` / `startedPatch` / `addFile` / `deleteFile` / `updateFile` / `endedPatch`) and emits the same `ParseError` wording as the Rust reference. `finish()` flushes any trailing buffered line and asserts the parser ended in `EndedPatch`.
 - `src/index.ts` — re-exports the data-plane API and exposes Cordis plugin metadata (`name`, `inject`)
 
@@ -43,7 +53,7 @@ Still pending the next rounds:
 
 - `pnpm install` in the worktree root, so `apply.ts` can resolve `@deepseek-ai/cordis`, `@deepseek-ai/dsh-tools`, `@deepseek-ai/dsh-fs` and the live tool execution path (currently the file is exercised statically only — typecheck via `tsx` works).
 - Snapshot test against the assembled CLI (needs `DEEPSEEK_API_KEY`).
-- `apply_patch_tool_instructions.md` (verbatim from codex-rs/apply-patch) should be moved into a separate file and embedded into the tool description by reference. The text is currently inline in `apply.ts`.
+- `apply_patch_tool_instructions.md` lives at the package root and is loaded at apply time; the inline constant in `apply.ts` is gone. The file content is a condensed paraphrase (round 7); pulling the verbatim codex-rs grammar spec is tracked as a separate round.
 
 ## Why this matters
 

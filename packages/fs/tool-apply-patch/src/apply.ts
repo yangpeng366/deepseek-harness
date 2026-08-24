@@ -17,6 +17,7 @@
  * @module @deepseek-ai/dsh-tool-apply-patch/apply
  */
 
+import { readFile } from "node:fs/promises"
 import type { Context } from "@deepseek-ai/cordis"
 import { defineTool } from "@deepseek-ai/dsh-tools"
 import type { FsTarget, FsWriteIntent } from "@deepseek-ai/dsh-fs"
@@ -125,21 +126,23 @@ async function runApplyPatchTool(
   }
 }
 
-/**
- * The verbatim description GPT-4.1 was trained on (from
- * `codex-rs/apply-patch/src/lib.rs`). Keeping it byte-identical is the
- * cheapest way to preserve prompt-side behaviour alignment with the
- * upstream model. The leading newline matches the upstream.
- */
-const APPLY_PATCH_TOOL_DESCRIPTION = `
-Use the \`apply_patch\` tool to edit files.
-- The \`input\` parameter is the patch text between the \`*** Begin Patch\` and \`*** End Patch\` markers.
-- The patch text can include add/update/delete hunks (each prefixed with \`*** Add File: PATH\`, \`*** Update File: PATH\`, or \`*** Delete File: PATH\`).
-- Update hunks use unified-diff-like lines: a leading space for context, \`+\` for added lines, \`-\` for removed lines.
-- Optional \`*** Move to: PATH\` after an Update File hunk renames the file at apply time.
-- Delete hunks and the source-cleanup step of Move-to currently fail closed in this composition: use the shell tool to remove the file, then retry without the Delete hunk.
-- Always print a brief summary of the changes you made before your final message.
-`.trim()
+// Path to the model-facing prompt template, sourced from
+// `apply_patch_tool_instructions.md` at the package root.
+//
+// NOTE: this is a condensed dsh-specific paraphrase, not a verbatim copy of
+// `codex-rs/apply-patch/src/lib.rs` `APPLY_PATCH_TOOL_INSTRUCTIONS` (which is
+// `include_str!("../apply_patch_tool_instructions.md")` and carries the full
+// codex-rs grammar spec). Keeping the file separate from `apply.ts` lets us
+// update the prompt without rebuilding TypeScript and gives the host agent a
+// single place to override the text via cordis.yml overlay.
+//
+// Loaded at apply time so we keep the prompt text in lockstep with the file
+// without an extra build-time embedding step; relative URL is resolved
+// against this module via `import.meta.url`.
+const APPLY_PATCH_TOOL_INSTRUCTIONS_URL = new URL(
+  "../apply_patch_tool_instructions.md",
+  import.meta.url,
+)
 
 /** Present a pending `apply_patch` call as a diff card per hunk, derived from the parsed hunks. */
 function presentApplyPatchCall(args: ApplyPatchToolArgs) {
@@ -158,7 +161,11 @@ export const name = "tool-apply-patch"
 export const inject = ["tools", "fs", "systemPrompt"]
 
 /** Register the model-facing `apply_patch` tool. */
-export function apply(ctx: Context): void {
+export async function apply(ctx: Context): Promise<void> {
+  const applyPatchDescription = (
+    await readFile(APPLY_PATCH_TOOL_INSTRUCTIONS_URL, "utf8")
+  ).trim()
+
   ctx.systemPrompt.section({
     name: "tool:apply_patch",
     order: 103,
@@ -186,7 +193,7 @@ export function apply(ctx: Context): void {
 
   ctx.tools.register(defineTool({
     name: "apply_patch",
-    description: APPLY_PATCH_TOOL_DESCRIPTION,
+    description: applyPatchDescription,
     parameters: {
       input: {
         type: "string",
