@@ -3,34 +3,51 @@
 Model-facing `apply_patch` tool for DeepSeek Harness — a TypeScript port of
 [`codex-rs/apply-patch`](https://github.com/openai/codex/tree/main/codex-rs/apply-patch).
 
-## Status (2026-08-24, round 3)
+## Status (2026-08-25, round 5)
 
-Two of the four upstream Rust modules are now ported and tested:
+Three of the four upstream Rust modules are now ported and tested, plus the
+data-plane and live Cordis wiring:
 
 - `src/markers.ts` — verbatim marker constants from the codex reference
 - `src/types.ts` — `Hunk`, `UpdateFileChunk`, `ApplyPatchArgs`, `ParseError`, `ParseMode`
 - `src/parser.ts` — `parsePatch(patch, mode)` with strict + lenient (heredoc-aware) modes
 - `src/seek-sequence.ts` — fuzzy line locator with four passes (exact / trimEnd / trim / Unicode-normalise), mirroring `seek_sequence.rs`
-- `src/index.ts` — re-exports + Cordis plugin metadata (`name`, `inject`)
+- `src/apply-core.ts` — pure data-plane core mirroring `codex-rs/apply-patch/src/lib.rs` `apply_hunks`:
+  - `PatchFileBackend` interface (resolve/read/write/delete)
+  - `applyPatch` / `applyPatchFromArgs` entry points
+  - structured `HunkOutcome` reports (added/updated/deleted/failed)
+  - typed error classes: `ApplyPatchParseError`, `AddFileConflictError`, `FileNotFoundError`, `HunkNotAppliedError`, `DeleteNotSupportedError`, `MoveSourceCleanupError`
+  - pure `computeUpdatedContent` helper
+- `src/apply.ts` — Cordis `apply(ctx, config)` body: resolves `ctx.fs.writeText/readText` behind a `PatchFileBackend`, falls back to `ctx.shell` for delete, registers the `apply_patch` model-facing tool with `defineTool`. The verbatim codex-rs `APPLY_PATCH_TOOL_DESCRIPTION` text is embedded so the model-side prompt template stays aligned with the upstream.
+- `src/index.ts` — re-exports the data-plane API and exposes Cordis plugin metadata (`name`, `inject`)
 
-Verified on 2026-08-24 with keyless tests driven from the host `node_modules\.bin\tsx.cmd`:
+Verified on 2026-08-25 (round 5) with keyless tests driven from the host
+`node_modules\.bin\tsx.cmd`:
 
 ```
 tests/parser.spec.ts          8 passed
 tests/seek-sequence.spec.ts   9 passed
+tests/apply-core.spec.ts     19 passed   (data-plane core, MemBackend)
+tests/integration.spec.ts     9 passed   (real node:fs/promises via NodeFsBackend)
+                            -- 45 total -- keyless, no DEEPSEEK_API_KEY
 ```
+
+The integration suite mirrors four codex-rs scenarios in
+`codex-rs/apply-patch/tests/fixtures/scenarios/` (001, 003, 004, 020) plus
+the round-3 mixed Add/Update/Delete scenario and the parse-error path.
+Fixture bodies are inlined so the suite stays portable across machines.
 
 Still pending the next rounds:
 
 - `src/streaming-parser.ts` — incremental line-buffer parser mirroring `streaming_parser.rs`. Optional: only needed when the agent streams patch input instead of receiving one big string.
-- `src/apply.ts` — Cordis `apply(ctx, config)` body that registers the tool via `defineTool`, normalises paths, and dispatches each `Hunk` to `ctx.fs.write / read / delete` through `FsWriteIntent`. This is the live tool wiring; it depends on `ctx.fs`, `ctx.tools`, `ctx.systemPrompt` being present in the worktree (requires `pnpm install`).
+- `pnpm install` in the worktree root, so `apply.ts` can resolve `@deepseek-ai/cordis`, `@deepseek-ai/dsh-tools`, `@deepseek-ai/dsh-fs` and the live tool execution path (currently the file is exercised statically only — typecheck via `tsx` works).
 - Snapshot test against the assembled CLI (needs `DEEPSEEK_API_KEY`).
-- `apply_patch_tool_instructions.md` (verbatim from codex-rs/apply-patch) should be embedded into the tool description so model-side prompting stays aligned with the upstream prompt template.
+- `apply_patch_tool_instructions.md` (verbatim from codex-rs/apply-patch) should be moved into a separate file and embedded into the tool description by reference. The text is currently inline in `apply.ts`.
 
 ## Why this matters
 
 `packages/fs` ships `tool-fs` (read/write/edit) and `tool-str-replace-editor`
-(view/create/str_replace) but no `apply_patch`. Codex's flagship model-facing
+(view/create/str_replace) but no `apply_patch`. Codex''s flagship model-facing
 patch format — used by gpt-4.1 and downstream consumers — has no harness
 equivalent, so every harness agent that wants to mirror codex behaviour has
 to hand-roll its own driver. This package fills that gap on the public
@@ -43,6 +60,7 @@ to hand-roll its own driver. This package fills that gap on the public
 | `parser.rs`            | `src/parser.ts`          | ported + tested                              |
 | `markers` (in parser)  | `src/markers.ts`         | ported + tested                              |
 | `seek_sequence.rs`     | `src/seek-sequence.ts`   | ported + tested (4 passes)                   |
+| `lib.rs`               | `src/apply-core.ts`      | ported + tested (HunkOutcome + typed errors) |
+| `lib.rs` (apply ctx)   | `src/apply.ts`           | ported (defineTool + ctx.fs/shell bridge)    |
 | `streaming_parser.rs`  | `src/streaming-parser.ts`| pending                                      |
-| `invocation.rs`        | `src/apply.ts`           | pending (`defineTool` + `ctx.fs` bridge)     |
-| `lib.rs`               | `src/index.ts`           | ported (re-exports + metadata)               |
+| `invocation.rs`        | n/a (no shell-driver bin) | out of scope -- shell-driver is codex-specific |
