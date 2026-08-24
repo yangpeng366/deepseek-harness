@@ -78,6 +78,26 @@ describe('publishableImage', () => {
   })
 
   it('refuses a target whose real path escapes the repository', () => {
+    // Check if we can create symlinks; if not, skip this test (Windows without privileges)
+    let canSymlink = false
+    const symlinkTestDir = mkdtempSync(join(tmpdir(), 'dsh-symlink-test-'))
+    try {
+      symlinkSync(join(symlinkTestDir, 'target'), join(symlinkTestDir, 'link'))
+      canSymlink = true
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'EPERM') {
+        canSymlink = false
+      } else {
+        throw err
+      }
+    } finally {
+      rmSync(symlinkTestDir, { recursive: true, force: true })
+    }
+
+    if (!canSymlink) {
+      return
+    }
+
     // Publication copies the bytes onto the site, so a reference reaching a
     // build-machine file must not be treated as an image the repository owns.
     const { root } = fixture()
