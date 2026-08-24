@@ -3,11 +3,15 @@
  *  (schema, defineTool call, FsWriteIntent bridge) lands after `pnpm install`
  *  resolves `ctx.tools` and `ctx.fs` in the worktree.
  *  seekSequence is a pure helper that does not require any Cordis services.
+ *  createStreamingPatchParser is the incremental / LLM-streaming surface that
+ *  feeds `parsePatch` once `finish()` succeeds.
  *  @module @deepseek-ai/dsh-tool-apply-patch
  */
 
 export { parsePatch } from "./parser.ts"
 export { seekSequence } from "./seek-sequence.ts"
+export { createStreamingPatchParser } from "./streaming-parser.ts"
+export type { StreamingPatchParser } from "./streaming-parser.ts"
 export {
   BEGIN_PATCH_MARKER,
   END_PATCH_MARKER,

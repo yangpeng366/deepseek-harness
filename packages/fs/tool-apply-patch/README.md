@@ -3,9 +3,9 @@
 Model-facing `apply_patch` tool for DeepSeek Harness — a TypeScript port of
 [`codex-rs/apply-patch`](https://github.com/openai/codex/tree/main/codex-rs/apply-patch).
 
-## Status (2026-08-25, round 5)
+## Status (2026-08-25, round 6)
 
-Three of the four upstream Rust modules are now ported and tested, plus the
+All four upstream Rust modules are now ported and tested, plus the
 data-plane and live Cordis wiring:
 
 - `src/markers.ts` — verbatim marker constants from the codex reference
@@ -19,9 +19,10 @@ data-plane and live Cordis wiring:
   - typed error classes: `ApplyPatchParseError`, `AddFileConflictError`, `FileNotFoundError`, `HunkNotAppliedError`, `DeleteNotSupportedError`, `MoveSourceCleanupError`
   - pure `computeUpdatedContent` helper
 - `src/apply.ts` — Cordis `apply(ctx, config)` body: resolves `ctx.fs.writeText/readText` behind a `PatchFileBackend`, falls back to `ctx.shell` for delete, registers the `apply_patch` model-facing tool with `defineTool`. The verbatim codex-rs `APPLY_PATCH_TOOL_DESCRIPTION` text is embedded so the model-side prompt template stays aligned with the upstream.
+- `src/streaming-parser.ts` — incremental `StreamingPatchParser` factory (`createStreamingPatchParser()`) mirroring `codex-rs/apply-patch/src/streaming_parser.rs`. `pushDelta(delta)` walks the delta one code-point at a time, accumulating a `lineBuffer` until `\n`; trailing `\r` is stripped so CRLF inputs parse identically to LF. `processLine` dispatches on the active `mode` (`notStarted` / `startedPatch` / `addFile` / `deleteFile` / `updateFile` / `endedPatch`) and emits the same `ParseError` wording as the Rust reference. `finish()` flushes any trailing buffered line and asserts the parser ended in `EndedPatch`.
 - `src/index.ts` — re-exports the data-plane API and exposes Cordis plugin metadata (`name`, `inject`)
 
-Verified on 2026-08-25 (round 5) with keyless tests driven from the host
+Verified on 2026-08-25 (round 6) with keyless tests driven from the host
 `node_modules\.bin\tsx.cmd`:
 
 ```
@@ -29,7 +30,8 @@ tests/parser.spec.ts          8 passed
 tests/seek-sequence.spec.ts   9 passed
 tests/apply-core.spec.ts     19 passed   (data-plane core, MemBackend)
 tests/integration.spec.ts     9 passed   (real node:fs/promises via NodeFsBackend)
-                            -- 45 total -- keyless, no DEEPSEEK_API_KEY
+tests/streaming-parser.spec.ts 21 passed  (mirrors codex-rs streaming_parser.rs mod tests)
+                            -- 66 total -- keyless, no DEEPSEEK_API_KEY
 ```
 
 The integration suite mirrors four codex-rs scenarios in
@@ -39,7 +41,6 @@ Fixture bodies are inlined so the suite stays portable across machines.
 
 Still pending the next rounds:
 
-- `src/streaming-parser.ts` — incremental line-buffer parser mirroring `streaming_parser.rs`. Optional: only needed when the agent streams patch input instead of receiving one big string.
 - `pnpm install` in the worktree root, so `apply.ts` can resolve `@deepseek-ai/cordis`, `@deepseek-ai/dsh-tools`, `@deepseek-ai/dsh-fs` and the live tool execution path (currently the file is exercised statically only — typecheck via `tsx` works).
 - Snapshot test against the assembled CLI (needs `DEEPSEEK_API_KEY`).
 - `apply_patch_tool_instructions.md` (verbatim from codex-rs/apply-patch) should be moved into a separate file and embedded into the tool description by reference. The text is currently inline in `apply.ts`.
@@ -53,6 +54,18 @@ equivalent, so every harness agent that wants to mirror codex behaviour has
 to hand-roll its own driver. This package fills that gap on the public
 `ctx.fs` seam.
 
+## Streaming vs. whole-string
+
+`src/parser.ts` consumes the full patch string in one `parsePatch(...)`
+call. `src/streaming-parser.ts` accepts arbitrary UTF-8 deltas via
+`createStreamingPatchParser()` and surfaces every committed hunk as
+soon as it finalises, so the runtime can drive the file-system
+pipeline mid-stream instead of waiting for the chunk boundary — useful
+when model output is delivered one token at a time. The interface and
+error wording match `codex-rs/apply-patch/src/streaming_parser.rs`
+line-for-line, including CRLF normalisation, EOF marker placement, and
+the bare-empty-update-line carve-out.
+
 ## Layout mirror
 
 | codex-rs file          | dsh port                 | status                                       |
@@ -62,5 +75,5 @@ to hand-roll its own driver. This package fills that gap on the public
 | `seek_sequence.rs`     | `src/seek-sequence.ts`   | ported + tested (4 passes)                   |
 | `lib.rs`               | `src/apply-core.ts`      | ported + tested (HunkOutcome + typed errors) |
 | `lib.rs` (apply ctx)   | `src/apply.ts`           | ported (defineTool + ctx.fs/shell bridge)    |
-| `streaming_parser.rs`  | `src/streaming-parser.ts`| pending                                      |
+| `streaming_parser.rs`  | `src/streaming-parser.ts`| ported + tested (21/21, codex-rs mod tests) |
 | `invocation.rs`        | n/a (no shell-driver bin) | out of scope -- shell-driver is codex-specific |
