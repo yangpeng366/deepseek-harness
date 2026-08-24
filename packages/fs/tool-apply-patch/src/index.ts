@@ -1,11 +1,13 @@
 /** `@deepseek-ai/dsh-tool-apply-patch` — Cordis plugin entry point.
  *  This module re-exports the parser and markers; the live tool wiring
- *  (schema, defineTool call, FsWriteIntent bridge) lands in the next
- *  commit once `pnpm install` runs and `ctx.tools` becomes resolvable.
+ *  (schema, defineTool call, FsWriteIntent bridge) lands after `pnpm install`
+ *  resolves `ctx.tools` and `ctx.fs` in the worktree.
+ *  seekSequence is a pure helper that does not require any Cordis services.
  *  @module @deepseek-ai/dsh-tool-apply-patch
  */
 
 export { parsePatch } from "./parser.ts"
+export { seekSequence } from "./seek-sequence.ts"
 export {
   BEGIN_PATCH_MARKER,
   END_PATCH_MARKER,
