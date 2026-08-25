@@ -1,0 +1,5 @@
+name: 默认模式（对位 codex default）
+description: |
+  对位 codex collaboration-mode 的 default 模板。仅暴露 read / search / skill
+  等只读工具，禁止写盘、shell、subagent。任务起点切换；session 内不二次切换。
+order: 10

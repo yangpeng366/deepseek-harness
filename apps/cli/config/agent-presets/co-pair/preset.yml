@@ -1,0 +1,5 @@
+name: 协同模式（对位 codex pair_programming）
+description: |
+  对位 codex collaboration-mode 的 pair_programming 模板。允许逐步修改
+  工作树但每步要求一行 rationale，下一步不明时停下来确认。
+order: 13

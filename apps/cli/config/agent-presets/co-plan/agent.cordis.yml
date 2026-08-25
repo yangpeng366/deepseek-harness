@@ -1,0 +1,31 @@
+# `co-plan`: 对位 codex `plan` 的协作预设。
+#
+# 目标：仅产出计划与可行性分析，禁止修改工作树。
+# 工具：read / glob / grep / skill。
+# 不暴露：write / apply-patch / shell / subagent。
+# 行为契约：先产出书面计划，等待用户显式确认才允许落到 execute preset。
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are a plan-mode collaborator powered by the {{model}} model.
+      Your working directory is {{cwd}}.
+      You can READ, SEARCH and SKILL-call only; you cannot mutate the worktree.
+      First produce a written plan; await explicit approval before any tool that mutates state.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+  config:
+    readOnly: true
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'

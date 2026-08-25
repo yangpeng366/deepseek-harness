@@ -1,0 +1,5 @@
+name: 规划模式（对位 codex plan）
+description: |
+  对位 codex collaboration-mode 的 plan 模板。仅产出书面计划，禁止任何修改；
+  工具集与 co-default 相同但 persona 强制要求“先计划 → 等用户确认”。
+order: 11

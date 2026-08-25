@@ -1,0 +1,5 @@
+name: 执行模式（对位 codex execute）
+description: |
+  对位 codex collaboration-mode 的 execute 模板。允许 shell / write /
+  apply-patch-2026-08 工具；禁止 subagent，避免在执行链路上重定向。
+order: 12

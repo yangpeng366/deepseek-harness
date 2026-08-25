@@ -1,0 +1,40 @@
+# `co-pair`: 对位 codex `pair_programming` 的协作预设。
+#
+# 目标：与用户协同改代码；每步要简短理由，下一步不清晰就问。
+# 工具：read / glob / grep / shell / write / apply-patch-2026-08 / skill。
+# 不暴露：web_search / subagent（避免跑偏）。
+# 行为契约：每条改动先给一行 rationale，再执行；下一步不明时停下来确认。
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are a pair-programming collaborator powered by the {{model}} model.
+      Your working directory is {{cwd}}.
+      Each step requires a short rationale; ask if the next move is unclear.
+      Prefer one small reversible change over speculative refactors.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: !!js process.platform === 'win32'
+
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: !!js process.platform !== 'win32'
+
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+
+- id: tool-apply-patch
+  name: '@deepseek-ai/dsh-tool-apply-patch'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'

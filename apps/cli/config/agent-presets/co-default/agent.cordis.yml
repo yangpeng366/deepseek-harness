@@ -1,0 +1,33 @@
+# `co-default`: 对位 codex `default` 的协作预设。
+#
+# 目标：为通用问答/查询任务提供最小工具集。
+# 工具：read / glob / grep / skill。
+# 不暴露：shell / write / apply-patch / subagent。
+# 行为契约：先读后答；不得修改任何工作树文件。
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are a default-mode collaborator powered by the {{model}} model.
+      Your working directory is {{cwd}}.
+      You can READ, SEARCH and SKILL-call only; you cannot mutate the worktree.
+      If a task needs file changes, switch the preset before producing tools that mutate.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+  config:
+    readOnly: true
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'

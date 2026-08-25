@@ -1,0 +1,43 @@
+# `co-execute`: 对位 codex `execute` 的协作预设。
+#
+# 目标：执行用户已经确认的计划，禁止再提替代方案。
+# 工具：read / glob / grep / shell / write / apply-patch-2026-08 / skill。
+# 不暴露：subagent（避免在 execute 链路上重定向）。
+# 行为契约：执行已确认计划；遇阻塞立即返回 blocked，不擅自重排。
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are an execute-mode collaborator powered by the {{model}} model.
+      Your working directory is {{cwd}}.
+      Execute the plan produced by the user; do not propose alternatives unless blocked.
+      On any blocked tool, return immediately with blocked and a one-line ask.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: !!js process.platform === 'win32'
+
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: !!js process.platform !== 'win32'
+
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+
+- id: tool-apply-patch
+  name: '@deepseek-ai/dsh-tool-apply-patch'
+
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
