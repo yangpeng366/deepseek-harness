@@ -127,16 +127,14 @@ async function runApplyPatchTool(
 }
 
 // Path to the model-facing prompt template, sourced from
-// `apply_patch_tool_instructions.md` at the package root.
+// `apply_patch_tool_instructions.md` at the package root. The file is a
+// verbatim port of `codex-rs/apply-patch/apply_patch_tool_instructions.md`
+// (Apache-2.0); the upstream version is `include_str!`-embedded into
+// `APPLY_PATCH_TOOL_INSTRUCTIONS` by `codex-rs/apply-patch/src/lib.rs`.
+// Keeping the file separate from `apply.ts` lets the host agent override
+// the text via cordis.yml overlay without rebuilding TypeScript.
 //
-// NOTE: this is a condensed dsh-specific paraphrase, not a verbatim copy of
-// `codex-rs/apply-patch/src/lib.rs` `APPLY_PATCH_TOOL_INSTRUCTIONS` (which is
-// `include_str!("../apply_patch_tool_instructions.md")` and carries the full
-// codex-rs grammar spec). Keeping the file separate from `apply.ts` lets us
-// update the prompt without rebuilding TypeScript and gives the host agent a
-// single place to override the text via cordis.yml overlay.
-//
-// Loaded at apply time so we keep the prompt text in lockstep with the file
+// Loaded at apply time so the prompt stays in lockstep with the file
 // without an extra build-time embedding step; relative URL is resolved
 // against this module via `import.meta.url`.
 const APPLY_PATCH_TOOL_INSTRUCTIONS_URL = new URL(
