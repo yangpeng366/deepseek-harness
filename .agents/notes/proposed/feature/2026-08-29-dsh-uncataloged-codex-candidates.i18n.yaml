@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-08-29-dsh-uncataloged-codex-candidates.md
+2026-08-29-dsh-uncataloged-codex-candidates.md: b8be75b2bde7935e880ab7ddb9ec341d7942f04a
+2026-08-29-dsh-uncataloged-codex-candidates.zh.md: f398176b8b0afcda38af333857a3c7559be48fb0
