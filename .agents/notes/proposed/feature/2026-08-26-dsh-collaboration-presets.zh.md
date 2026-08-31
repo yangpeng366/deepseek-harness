@@ -29,12 +29,16 @@ Status: proposed
 
 把四条预设作为 master 上一条独立 commit 落地。提交位于 `apps/cli/config/agent-presets/co-{default,plan,execute,pair}/`，与该目录下其他预设并列。`packages/preset/` 下不动。
 
-验收标准：
+## 验收标准
 
 - `pnpm run verify-cordis-config` 对四个新 `agent.cordis.yml` 通过；每个文件的 resolver manifest 列其依赖。
 - 四个预设名与 codex 命名模式一一对应；CLI 帮助输出将它们暴露为 `--preset co-default|co-plan|co-execute|co-pair`。
 - `examples/agent-spine` 下一条 snapshot 覆盖一次 `--preset co-plan` 会话：产出一份书面计划并拒绝改变状态。
 - `examples/agent-spine` 下一条 snapshot 覆盖一次 `--preset co-execute` 会话：执行已批准计划且不暴露 `subagent`。
+
+## 已考虑的替代方案
+
+- 增加四个会话旗标而不建预设目录：拒绝。这会重复预设选择逻辑，并把工具组合藏在 CLI 代码里，而非可审查的配置中。
 
 ## 风险
 

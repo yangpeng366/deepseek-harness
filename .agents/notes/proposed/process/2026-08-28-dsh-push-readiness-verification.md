@@ -65,6 +65,10 @@ The four feature branches and the master delta are independent enough that they 
 
 Folding `bfa855ca1f` into the `dsh-apply-patch-2026-08` PR is **not** advisable: `co-execute` and `co-pair` reference `tool-apply-patch` as a cordis dependency, so the collaboration presets PR depends on the apply-patch PR landing first per the existing [2026-08-26 RFC note](proposed/feature/2026-08-26-dsh-collaboration-presets.md#push-gate).
 
+## Alternatives considered
+
+- Push all five branches and open every PR at once: rejected because it makes the collaboration-presets PR fail to resolve until apply-patch lands and obscures that dependency from review.
+
 The npm dist-tags remain `latest: 0.1.1-rc.2` / `next: 0.1.1-rc.2` as confirmed on 2026-08-24; no new upstream version is waiting, so re-basing only needs to keep the four PRs at "mergeable" against current `deepseek-ai/master` and not against any tag.
 
 ## Proposal
@@ -72,6 +76,12 @@ The npm dist-tags remain `latest: 0.1.1-rc.2` / `next: 0.1.1-rc.2` as confirmed 
 Adopt the three-step push-execution kit above. Keep the four feature branches on the user's fork as-is (no rebase, no squashing) so the per-PR commit bodies remain the source of truth. Push the master delta as a doc-only PR only after the four feature PRs are open, so the user-visible PR list grows deterministically.
 
 Track the next user sign-off in the same patrol row; once a push lands, archive this note and replace it with a per-PR landing log under `.agents/notes/implemented/process/`.
+
+## Acceptance criteria
+
+- Every remote ref moves only by fast-forward, and `origin/master` equals the local master SHA recorded before the push.
+- Each of the four feature branches has one PR against upstream `master`; the collaboration-presets PR declares its dependency on the apply-patch PR.
+- The master delta is delivered as the final doc-only PR after the four feature PRs exist.
 
 ## Risks
 

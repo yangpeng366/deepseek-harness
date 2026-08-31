@@ -29,12 +29,16 @@ The presets do not require a new package. They compose existing cordis plugins (
 
 Land the four presets as one standalone commit on master. The commit sits at `apps/cli/config/agent-presets/co-{default,plan,execute,pair}/`, parallel to any other presets already in that directory. No edits under `packages/preset/`.
 
-Acceptance criteria:
+## Acceptance criteria
 
 - `pnpm run verify-cordis-config` passes against the four new `agent.cordis.yml` files; the resolver manifest for each one lists its dependencies.
 - The four preset names map 1:1 to codex named modes; the CLI help output exposes them as `--preset co-default|co-plan|co-execute|co-pair`.
 - One snapshot under `examples/agent-spine` covers a `--preset co-plan` session that produces a written plan and refuses to mutate state.
 - One snapshot under `examples/agent-spine` covers a `--preset co-execute` session that executes an approved plan and does not expose `subagent`.
+
+## Alternatives considered
+
+- Add four session flags without preset directories: rejected because it duplicates preset selection and leaves tool composition hidden in CLI code instead of reviewable configuration.
 
 ## Risks
 

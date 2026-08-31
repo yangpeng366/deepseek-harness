@@ -45,7 +45,7 @@ b150a551b8d465e31e418e1b2eaf5e79bbb7d28e  refs/heads/master
 
     ```
     cd F:\github\deepseek-harness
-    git push origin master:b8f879c085    # 快进；SHA 必须等于本地 HEAD
+    git push origin master:b8f879c085    # fast-forward; SHA must equal local HEAD
     ```
 
     之后 `origin/master` 与 `local/master` 都指向 `b8f879c085`。
@@ -65,6 +65,10 @@ b150a551b8d465e31e418e1b2eaf5e79bbb7d28e  refs/heads/master
 
 把 `bfa855ca1f` 并入 `dsh-apply-patch-2026-08` PR **不**合适：`co-execute` 与 `co-pair` 把 `tool-apply-patch` 列为 cordis 依赖，所以 collaboration presets PR 依赖 apply-patch PR 先合，具体见 [2026-08-26 RFC 笔记](proposed/feature/2026-08-26-dsh-collaboration-presets.md#push-gate)。
 
+## 已考虑的替代方案
+
+- 一次推送五个分支并同刻开出全部 PR：拒绝。这会让 collaboration presets PR 在 apply-patch 合入前无法解析，也让该依赖在审查中不明显。
+
 npm dist-tags 仍是 `latest: 0.1.1-rc.2` / `next: 0.1.1-rc.2`（2026-08-24 核过）；上游无新版本待发，所以重定基线只需保证四份 PR 对当前 `deepseek-ai/master` 处于 mergeable，无需对应任何 tag。
 
 ## 提案
@@ -72,6 +76,12 @@ npm dist-tags 仍是 `latest: 0.1.1-rc.2` / `next: 0.1.1-rc.2`（2026-08-24 核�
 照上面三步推送执行包行事。四个功能分支保持 fork 原样（不重定、不压扁），让每份 PR 的 commit body 仍是单一信息源。master 差量只在四份功能 PR 都开出来之后作为文档 PR 推，保证用户可见 PR 列表按确定顺序增长。
 
 后续用户签字在同一条巡检行内跟踪；一旦首批推送落地，把本笔记归档，替换为 `.agents/notes/implemented/process/` 下「每 PR 一份落点日志」。
+
+## 验收标准
+
+- 每个远端 ref 只做快进推进，且 `origin/master` 等于推送前记录的本地 master SHA。
+- 四个功能分支各有一份对 upstream `master` 的 PR；collaboration-presets PR 声明其对 apply-patch PR 的依赖。
+- master 差量在四份功能 PR 存在后，作为最后一份 doc-only PR 投递。
 
 ## 风险
 
