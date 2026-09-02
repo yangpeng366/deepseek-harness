@@ -51,6 +51,19 @@ Status: proposed
 - `dsh-bundle-dynamic-plugin-loader` —— 对位 `codex-rs/plugin/` 的运行时安装路径。与 `extensions/`、`bundle/`、新增的 permissions 边界共同组合；没有该边界就不能开工。
 - `dsh-web-tui-bridge` —— 给 Web UI 加可选 TUI 表面，复用 `packages/host`。由 OpenEyes 与 patrol 工作流驱动。
 
+#### 刷新 Codex 清单后的下一轮排序
+
+以下顺序是下一轮对比周期的提案，不是实现承诺。排序采用[镜像刷新笔记](../process/2026-08-29-dsh-codex-parity-mirror-refresh.md)记录的新版 `codex-rs` 证据，同时保持既有 P0 工作不变：
+
+1. `dsh-context-fragments` —— 成本最低的面向模型新增能力。可在 `packages/context/` 加入带类型的 developer/user fragment，无需原生依赖；但须先定义 annotation 如何保留在 prompt 重建中。
+2. `dsh-preset-roles` —— 为 `packages/preset/` 增加角色文件发现与合并。边界有用且可控，但它与 preset 组合存在重叠，必须先明确优先级规则。
+3. `dsh-prompt-templates` —— 为 `packages/core/system-prompt/` 提供可复用、按 profile 作用域的 prompt 模板。它能改善下游覆盖能力，但在模板可配置前必须确定模板归属与面向模型内容的日志记录方式。
+4. `dsh-workload-identity` —— 在 `packages/credentials/` 附近提供文件托管的身份交换。它有部署集成价值，但必须先给出威胁模型，以及 token 生命周期和文件权限规则。
+5. `dsh-code-mode` —— 保留为 P2 调研。在 dsh 的 TypeScript/ESM 与 native addon 取向下，进程内 V8 执行带来的实现与分发风险最高。
+6. `dsh-model-history` —— 保留为 P2 调研。该领域可能补充 `packages/session/` 与 `packages/compaction/`，但当前归属边界尚不清晰，不能排在其他候选之前。
+
+`guardian-review` 不参与排序：刷新后的 Codex 源码没有对应的 `guardian-context` 边界，因此任何 dsh 实现都是新的同意流程设计，而不是 parity port。
+
 ### P2 —— 仅作调研
 
 - `dsh-bundle-cloud-tasks` —— 对位 `codex-rs/cloud-tasks`。需要 `api/` 加 `sdk/` 对齐。

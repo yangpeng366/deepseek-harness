@@ -51,6 +51,19 @@ A first-class memory seam that mirrors `codex-rs/memories`. The seam is one `ctx
 - `dsh-bundle-dynamic-plugin-loader` — runtime install path parallel to `codex-rs/plugin/`. Composes with `extensions/`, `bundle/`, and the new permissions seam above; not safe to start without it.
 - `dsh-web-tui-bridge` — optional TUI surface for the Web UI, reusing `packages/host`. Driven by OpenEyes and patrol workflows.
 
+#### Next-cycle ranking from the refreshed Codex inventory
+
+The following order is a proposal for the next comparison cycle, not an implementation commitment. It uses the refreshed `codex-rs` evidence recorded in [the mirror-refresh note](../process/2026-08-29-dsh-codex-parity-mirror-refresh.md), while keeping the existing P0 work unchanged:
+
+1. `dsh-context-fragments` — lowest-cost model-visible addition. It can add typed developer/user fragments to `packages/context/` without a native dependency, but must define how annotations are retained in prompt reconstruction.
+2. `dsh-preset-roles` — role-file discovery and merge for `packages/preset/`. The seam is useful and bounded, but its precedence rules must be specified before implementation because it overlaps preset composition.
+3. `dsh-prompt-templates` — reusable, profile-scoped prompt templates for `packages/core/system-prompt/`. It improves downstream overrideability, but template ownership and model-visible logging must be settled before templates become configurable.
+4. `dsh-workload-identity` — file-backed identity exchange near `packages/credentials/`. It is valuable for deployment integration, but requires a threat model and explicit token-lifetime and file-permission rules.
+5. `dsh-code-mode` — retain as P2 research. In-process V8 execution is the largest implementation and distribution risk for dsh's TypeScript/ESM and native-addon stance.
+6. `dsh-model-history` — retain as P2 research. The domain may complement `packages/session/` and `packages/compaction/`, but the ownership split is not yet clear enough to rank above the other candidates.
+
+`guardian-review` is not ranked: the refreshed Codex source contains no corresponding `guardian-context` seam, so any dsh implementation would be a new consent design rather than a parity port.
+
 ### P2 — research only
 
 - `dsh-bundle-cloud-tasks` — `codex-rs/cloud-tasks` mirror. Needs `api/` plus `sdk/` alignment.
