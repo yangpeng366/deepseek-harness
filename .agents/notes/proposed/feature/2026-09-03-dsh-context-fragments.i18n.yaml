@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-09-03-dsh-context-fragments.md
 2026-09-03-dsh-context-fragments.md: bbc3394f3f029877df1fdad14d5275c4ae9f01aa
-2026-09-03-dsh-context-fragments.zh.md: c13a537c6769ed795b8efa377b1f138f8c241919
+2026-09-03-dsh-context-fragments.zh.md: 6047870cadb1b60cbe36fbe2939bda3dc5e6a365

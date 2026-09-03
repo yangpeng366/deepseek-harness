@@ -53,7 +53,7 @@ Status: proposed
 
 #### 刷新 Codex 清单后的下一轮排序
 
-以下顺序是下一轮对比周期的提案，不是实现承诺。排序采用[镜像刷新笔记](../process/2026-08-29-dsh-codex-parity-mirror-refresh.md)记录的新版 `codex-rs` 证据，同时保持既有 P0 工作不变：
+以下顺序是下一轮对比周期的提案，不是实现承诺。排序采用[镜像刷新笔记](../process/2026-08-29-dsh-codex-parity-mirror-refresh.zh.md)记录的新版 `codex-rs` 证据，同时保持既有 P0 工作不变：
 
 1. `dsh-context-fragments` —— 成本最低的面向模型新增能力。可在 `packages/context/` 加入带类型的 developer/user fragment，无需原生依赖；但须先定义 annotation 如何保留在 prompt 重建中。
 2. `dsh-preset-roles` —— 为 `packages/preset/` 增加角色文件发现与合并。边界有用且可控，但它与 preset 组合存在重叠，必须先明确优先级规则。

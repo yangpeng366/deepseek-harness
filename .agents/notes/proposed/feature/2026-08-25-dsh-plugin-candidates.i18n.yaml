@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-08-25-dsh-plugin-candidates.md
 2026-08-25-dsh-plugin-candidates.md: fb396ef95d4820cbf94c67084168c37834b59e9f
-2026-08-25-dsh-plugin-candidates.zh.md: fe0c9de0e23914d0b2ba7b149f15e547d083c00f
+2026-08-25-dsh-plugin-candidates.zh.md: 4f16da0a8e0ca7d5d81984fd19df9a210eddd476

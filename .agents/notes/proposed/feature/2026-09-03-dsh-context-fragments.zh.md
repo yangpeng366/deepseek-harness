@@ -62,7 +62,7 @@ export interface RenderedFragment {
   readonly startMarker: string
   readonly endMarker: string
   readonly text: string
-  /** 转义后的 body，前后已拼接 start/end marker。 */
+  /** Marker-escaped body, with start/end markers prepended and appended. */
   readonly rendered: string
 }
 
