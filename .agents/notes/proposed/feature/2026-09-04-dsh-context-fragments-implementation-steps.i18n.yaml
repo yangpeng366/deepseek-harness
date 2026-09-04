@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-09-04-dsh-context-fragments-implementation-steps.md
-2026-09-04-dsh-context-fragments-implementation-steps.md: 8700fcb641f6789e2b90e570651709cc5997ee43
-2026-09-04-dsh-context-fragments-implementation-steps.zh.md: 54cf5dc94c6ea0f42532e0cb02be00b767edfbbb
+2026-09-04-dsh-context-fragments-implementation-steps.md: 45a9376dbbfd20ce4f23fba827b46b8c66c63118
+2026-09-04-dsh-context-fragments-implementation-steps.zh.md: 02c48a135d18156bde7f4579fc49f3f1ffd86b8f

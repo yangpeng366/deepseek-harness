@@ -6,7 +6,7 @@ Status: proposed
 
 ## 问题
 
-[dsh-context-fragments 边界](2026-09-03-dsh-context-fragments.md) 对当前源代码是站得住的：本文落笔前于 2026-09-03 在工作树上重新核对了所有引用行号（`packages/context/agent-instructions/src/render.ts:10-11`、`:81`，`packages/llm/llm/src/message.ts:100-105`，`packages/core/system-prompt/src/invariant.ts`）。`packages/context/context-fragments/` 目录尚不存在；六个兄弟包（`agent-instructions`、`file-reference`、`file-reference-local`、`session-reference`、`time-context`、`tmux-context`）列在 `packages/context/` 之下，其中没有任何一个拥有带类型的 `Fragment<Body>` 模型、共享的 marker 转义，或 `MessageSourceMap` 中的 developer/user 角色拆分。
+[dsh-context-fragments 边界](2026-09-03-dsh-context-fragments.zh.md) 对当前源代码是站得住的：本文落笔前于 2026-09-03 在工作树上重新核对了所有引用行号（`packages/context/agent-instructions/src/render.ts:10-11`、`:81`，`packages/llm/llm/src/message.ts:100-105`，`packages/core/system-prompt/src/invariant.ts`）。`packages/context/context-fragments/` 目录尚不存在；六个兄弟包（`agent-instructions`、`file-reference`、`file-reference-local`、`session-reference`、`time-context`、`tmux-context`）列在 `packages/context/` 之下，其中没有任何一个拥有带类型的 `Fragment<Body>` 模型、共享的 marker 转义，或 `MessageSourceMap` 中的 developer/user 角色拆分。
 
 按规格这条边界一次 PR 装不下。它要碰一个新包（`@deepseek-ai/dsh-context-fragments`）、`packages/llm/llm/src/message.ts` 的一次声明合并扩展、一个可选的 binding（重写 `packages/context/agent-instructions/` 的渲染路径）、一个通过 `ctx.invariants` 注册的不变量伴随，以及一次新增一个包和一个 `apply()` 导出的 workspace 重胶。审阅者没法在不断章的情况下一次性读 600 行差异。一坨提交的 PR 还会掩盖风险：共享转义的回退不应阻塞角色拆分类型的讨论，binding 重构也不应阻塞注册表 API 的讨论。
 
@@ -141,6 +141,34 @@ pnpm run doc-sync
 ```
 
 步骤 4 收尾父提案的剩余验收条目：字面框仍在、持久化源种类仍为 `'agent-instructions'`、注册表通过 binding 的 `assemble()` 调用发射行、spine bundle 的快照测试因渲染字节等价而照旧通过。
+
+## Alternatives considered
+
+### 为什么不一次性合并整个 seam？
+
+一次 600 行的 diff 会在 `master` 上同时呈现五个评审面（新包、注册表、声明合并扩展、binding、快照测试），迫使评审者在接受任何内容前通读全部代码。共享转义的回归会阻塞角色分体类型的讨论；binding 重构会阻塞注册表 API 的讨论。父提案估算该 seam 为"下一周期成本最低候选"，是相对一次全新的 Agent Loop 重写而言较小，而非绝对体量小。单 PR 上线所需的评审时间仍与四步计划相当，但若第 4 步的 binding 引入快照回归，单 PR 会暴露更差的失败模式。
+
+### 为什么不在一个 PR 中通过 feature flag 上线？
+
+带 feature flag 的单 PR 仍会在同一变更中注册注册表、向 `MessageSourceMap` 合并、转义提升。评审者将看到半成品界面：没有消费者的注册表、没有行形数据的合并、没有 binding 的转义。每一步的评审价值在于已落地与待落地之间的差距；将差距合并到一个 PR 也就合并了评审价值。四步计划让每一步评审聚焦于一个已交付切片。
+
+### 为什么不倒序？
+
+倒序需在第 1 步交付 binding（以便现有转义可被提升至该 binding 调用的注册表），第 2 步交付注册表（以便第 3 步的合并有地方注册其行形数据）。第 1 步将承载最大体量却最小信号：binding companion 只有在参照其调用的注册表时才能被评审，而依赖于 binding 的注册表无法被独立评审。选定顺序让每一步的 CI 运行各自隔离失败。
+
+### 为什么不将父提案按步骤拆分为独立笔记？
+
+父提案拥有设计；本笔记拥有顺序。按四份笔记拆解设计会迫使每位评审者阅读四个标题来重建契约，并存在步骤笔记与父笔记之间漂移的风险。四步分解逐字引用父提案的验收标准，使评审者能将每一步映射到一行契约。
+
+## Acceptance criteria
+
+**第 1 步**完成条件：新包的 `tests/escape.spec.ts` 全部 17 条断言通过；`escapeFrameBody('body', `</system-reminder>`)` 对移植测试套件中每个 fixture 的输出与原 `escapeInstructionFrameBody('body')` 逐字节相等；`packages/context/context-fragments/src/` 下任一文件均不从 `@deepseek-ai/cordis` 或 `@deepseek-ai/dsh-agent` 导入；`packages/llm/llm/src/context-fragments.d.ts` 为声明合并存根，暂未被任何文件导入；`pnpm run typecheck` 工作区全量通过。
+
+**第 2 步**完成条件：可通过新包的 `apply()` 触达 `ctx.fragments.register`、`assemble`、`recognize` 与 `fragments/change` 事件；不变量伴生通过 `ctx.invariants.register('@deepseek-ai/dsh-context-fragments', ...)` 注册；从 `packages/context/agent-instructions/src/render.ts` 中提升出重复的 `escapeInstructionFrameBody`，agent-instructions 测试套件无需修改即仍通过；`pnpm --filter @deepseek-ai/dsh-context-fragments run test` 为绿。
+
+**第 3 步**完成条件：`MessageSourceMap['context-fragments']` 被一个 `agent-loop` 监听器消费，该监听器通过既有 `SessionEventMap` 机制为每个已注册片段发射一条持久化行；`text` 字段对每个已注册片段都等于 `startMarker + escapeFrameBody(body, endMarker) + endMarker`；所有既有 spine-bundle 快照测试仍以字节等价内容重放；`pnpm run test:coverage` 在新包上报告 100% 文件覆盖率。
+
+**第 4 步**完成条件：`packages/bundle/agent-spine/cordis.yml` 启用新的 binding companion；`packages/bundle/agent-spine-legacy/cordis.yml` 保持 binding 禁用且仍重放其基线快照；`pnpm run test:snapshot` 在新增的 `agent-instructions-binding-enabled` 过滤下通过；`pnpm run hygiene` 与 `pnpm run doc-sync` 全部干净；父提案的 `## Acceptance criteria` 现已端到端满足，本笔记可按 [implemented/AGENTS.md](../../implemented/AGENTS.md) 规则并入父提案。
 
 ## 排序理由
 

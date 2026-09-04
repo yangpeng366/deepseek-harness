@@ -142,6 +142,34 @@ pnpm run doc-sync
 
 Step 4 ends every remaining acceptance criterion in the parent proposal: the literal frame persists, the durable source kind remains `'agent-instructions'`, the registry emits rows through the binding's `assemble()` call, and the spine bundle's snapshot tests replay unchanged because the rendered output is byte-equivalent.
 
+## Alternatives considered
+
+### Why not ship the seam in one PR?
+
+A single 600-line diff against `master` would mix five review surfaces (new package, registry, declaration-merge extension, binding, snapshot tests) and force the reviewer to read everything before accepting anything. A regression in the shared escape would block the discussion of role-split typing; a binding refactor would block the discussion of the registry API. The parent proposal estimates the seam at "lowest-cost next-cycle candidate" because it is small relative to a fresh Agent Loop rewrite, not because it is small in absolute terms. A one-PR landing would still cost roughly the same review time as the four-step plan and would surface a worse failure mode if Step 4's binding introduced a snapshot regression.
+
+### Why not land a feature flag in one PR?
+
+A single PR with the binding behind a feature flag would still register the registry, merge into `MessageSourceMap`, and lift the escape in the same change. Reviewers would read a half-built surface: the registry without a consumer, the merge without a row shape, the escape without a binding. Each step's review value is the gap between what landed and what is still pending; collapsing the gap into one PR collapses the review value. A four-step plan keeps each reviewer focused on one shipped slice.
+
+### Why not the reverse order?
+
+A reverse order would have to ship the binding in Step 1 (so the existing escape can be lifted into a registry the binding calls) and the registry in Step 2 (so the merge in Step 3 has somewhere to register its row shape). Step 1 would carry the most surface and the least signal: a binding companion can only be reviewed against the registry it talks to, but a registry that depends on a binding cannot be reviewed in isolation. The chosen order lets each step's CI run isolate its own failure.
+
+### Why not split the parent proposal into separate notes per step?
+
+The parent proposal owns the design; this note owns the ordering. Splitting the design across four notes would force every reviewer to reconstruct the contract by reading four headers, and would risk drift between the step notes and the parent. The four-step decomposition cites the parent proposal's acceptance criteria verbatim so a reviewer can map each step to a contract line.
+
+## Acceptance criteria
+
+**Step 1** is done when the new package's `tests/escape.spec.ts` passes all 17 assertions, the `escapeFrameBody('body', `</system-reminder>`)` output is byte-for-byte equal to the original `escapeInstructionFrameBody('body')` for every fixture in the ported test suite, no file in `packages/context/context-fragments/src/` imports from `@deepseek-ai/cordis` or `@deepseek-ai/dsh-agent`, `packages/llm/llm/src/context-fragments.d.ts` is a declaration-merge stub that no file imports today, and `pnpm run typecheck` succeeds workspace-wide.
+
+**Step 2** is done when `ctx.fragments.register`, `assemble`, `recognize`, and the `fragments/change` event are reachable through the new package's `apply()`, the invariant companion is registered through `ctx.invariants.register('@deepseek-ai/dsh-context-fragments', ...)`, the duplicate `escapeInstructionFrameBody` is lifted out of `packages/context/agent-instructions/src/render.ts` and the agent-instructions test suite still passes without modification, and `pnpm --filter @deepseek-ai/dsh-context-fragments run test` is green.
+
+**Step 3** is done when `MessageSourceMap['context-fragments']` is consumed by an `agent-loop` listener that emits one durable row per registered fragment through the existing `SessionEventMap` mechanism, the rendered `text` field equals `startMarker + escapeFrameBody(body, endMarker) + endMarker` for every registered fragment, every existing spine-bundle snapshot test still replays byte-equivalent content, and `pnpm run test:coverage` reports 100% per-file on the new package.
+
+**Step 4** is done when `packages/bundle/agent-spine/cordis.yml` enables the new binding companion, `packages/bundle/agent-spine-legacy/cordis.yml` keeps the binding disabled and still replays its baseline snapshot, `pnpm run test:snapshot` passes for the new `agent-instructions-binding-enabled` filter, `pnpm run hygiene` and `pnpm run doc-sync` are clean, and the parent proposal's `## Acceptance criteria` is now satisfied end-to-end so this note can be consolidated into the parent proposal under the [implemented/AGENTS.md](../../implemented/AGENTS.md) rule.
+
 ## Ordering rationale
 
 The four steps are sequenced so each one ends with the smallest possible blast radius and the largest possible signal. Step 1 ships pure-function code with no Cordis or LLM touch; if the shared escape regresses, only the new package's tests fail. Step 2 introduces the registry and the invariant companion behind `apply()`, so the registry surface is reviewable without reading the durable-row emission path. Step 3 introduces the durable row shape and the agent-loop listener, which are the only changes visible to downstream consumers. Step 4 introduces the binding companion, which is the only step that visibly changes a shipped plugin's render output (and even then, only to byte-equivalent content).
