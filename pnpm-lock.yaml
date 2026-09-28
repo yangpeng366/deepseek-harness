@@ -3425,6 +3425,9 @@ importers:
       '@deepseek-ai/dsh-agent-loop':
         specifier: workspace:^
         version: link:../../core/agent-loop
+      '@deepseek-ai/dsh-context-fragments':
+        specifier: workspace:^
+        version: link:../context-fragments
       '@deepseek-ai/dsh-fs':
         specifier: workspace:^
         version: link:../../fs/fs

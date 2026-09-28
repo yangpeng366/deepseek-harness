@@ -18,10 +18,10 @@
  * partial matches pass through unchanged. A marker that does not start with
  * `<` is returned unchanged; the registry rejects non-`<` markers upstream.
  *
- * Behavior matches `escapeInstructionFrameBody` from
- * `packages/context/agent-instructions/src/render.ts:81` byte-for-byte when
- * `marker` is `</system-reminder>`, and the equivalence is asserted by
- * `tests/escape.spec.ts` until Step 4 retires the duplicate.
+ * `packages/context/agent-instructions` escapes its own frame body through
+ * `escapeInstructionFrameBody` in this module, so one implementation backs both
+ * packages; `packages/context/agent-instructions/tests/escape.spec.ts` pins the
+ * rendered bytes against the implementation that package carried before the lift.
  *
  * @param body - untrusted fragment text, possibly containing one or more
  *   literal copies of `marker`.
@@ -39,11 +39,9 @@ export function escapeFrameBody(body: string, marker: string): string {
 }
 
 /**
- * Escape one agent-instructions frame body. The helper is a specialized
- * `escapeFrameBody` bound to the agent-instructions close marker so callers
- * do not have to import the literal constant. It exists for the migration
- * window only and is removed in Step 4 when the agent-instructions package
- * imports the registry-owned escape.
+ * Escape one agent-instructions frame body. The helper binds `escapeFrameBody`
+ * to the agent-instructions close marker so that package imports one function
+ * instead of restating the marker literal next to its frame assembly.
  *
  * @param body - agent-instructions body, possibly containing one or more
  *   literal copies of the close marker.

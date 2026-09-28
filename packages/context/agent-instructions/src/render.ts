@@ -5,6 +5,7 @@
  */
 
 import { basename, dirname } from 'node:path'
+import { escapeInstructionFrameBody } from '@deepseek-ai/dsh-context-fragments'
 import type { InstructionFile, LoadedInstructionFile } from './files.ts'
 
 const SYSTEM_REMINDER_OPEN = '<system-reminder>'
@@ -76,10 +77,6 @@ function truncateUtf8(value: string, maxBytes: number): string {
     end -= 1
   }
   return bytes.subarray(0, end).toString('utf8')
-}
-
-function escapeInstructionFrameBody(body: string): string {
-  return body.replaceAll(SYSTEM_REMINDER_CLOSE, '<\\/system-reminder>')
 }
 
 function sectionText(file: LoadedInstructionFile): string {

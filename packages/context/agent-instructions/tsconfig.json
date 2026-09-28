@@ -18,6 +18,9 @@
       "path": "../../llm/llm"
     },
     {
+      "path": "../context-fragments"
+    },
+    {
       "path": "../../core/agent"
     },
     {
