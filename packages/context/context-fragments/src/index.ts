@@ -1,16 +1,25 @@
 /**
  * Typed request-context fragments shared by `packages/context/` contributors.
  *
- * Step 1 ships the value types and the shared escape; `ctx.fragments.*` and
- * the durable source kind arrive in Steps 2 and 3.
+ * Step 1 ships the value types and the shared escape; Step 2 adds the
+ * Cordis-backed registry and the invariant companion. The durable source
+ * kind and the binding companion land in Steps 3 and 4.
  *
  * @module @deepseek-ai/dsh-context-fragments
  */
+
+import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+import { FragmentsService } from './registry.ts'
+import type { FragmentsConfig } from './registry.ts'
 
 export {
   escapeFrameBody,
   escapeInstructionFrameBody,
 } from './escape.ts'
+
+export { FragmentsService } from './registry.ts'
+export type { FragmentsAssembleContext, FragmentsConfig } from './registry.ts'
 
 /** The two roles a fragment can occupy in a model request. */
 export type FragmentRole = 'developer' | 'user'
@@ -68,4 +77,28 @@ export interface FragmentMatch {
   readonly name: FragmentName
   readonly startIndex: number
   readonly endIndex: number
+}
+
+/** Cordis plugin name used by loader diagnostics. */
+export const name = 'context-fragments'
+
+/** Services required before this package can be applied. */
+export const inject = ['cordis']
+
+/** Schemastery validation for {@link FragmentsConfig}. */
+export const Config: z<FragmentsConfig> = z.object({
+  defaultRole: z.union(['developer', 'user']).default('user'),
+})
+
+/**
+ * Register the fragments service against the Cordis context so other
+ * contributors can resolve `ctx.fragments` and call `register` / `assemble`
+ * / `recognize`. The companion invariant in `./invariant.ts` runs after
+ * the assembly waterfall; the binding companion arrives in Step 4.
+ * @param ctx - Cordis context carrying the dependencies declared in `inject`.
+ * @param config - optional role defaults for omitted fragment roles.
+ * @returns the registered service disposer.
+ */
+export async function apply(ctx: Context, config: FragmentsConfig = {}): Promise<void> {
+  await ctx.plugin(FragmentsService, config)
 }

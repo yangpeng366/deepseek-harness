@@ -1,20 +1,64 @@
-# @deepseek-ai/dsh-context-fragments
+# `@deepseek-ai/dsh-context-fragments`
 
 [English](README.md) | 中文
 
-跨 `packages/context/` 各贡献者共享的类型化请求上下文片段：角色感知的 `Fragment<Body>` 模型、注册表拥有的 marker 对、内容盲转义使不受信任的 body 文本无法关闭插件拥有的 frame，以及一个从持久化 marker 重新识别先前注入的识别辅助函数。
+类型化的请求上下文片段：共享的标记转义、角色感知的正文，以及 Cordis
+驱动的注册表，统一持有按作用域的注册、分层装配，以及对历史注入片段
+的、内容无感的识别。
 
-第 1 步交付本包、类型与共享转义。第 2 步把重复转义自 `agent-instructions` 提升至本包，该包改为自此导入，并交付 `ctx.fragments.register` 与 `ctx.fragments.assemble`；`MessageSourceMap` 的声明合并扩展在第 3 步完成；agent-instructions binding 在第 4 步交付。决策记录：[dsh context-fragments seam Agent Note](../../../.agents/notes/proposed/feature/2026-09-03-dsh-context-fragments.zh.md) 与 [四步分解](../../../.agents/notes/proposed/feature/2026-09-04-dsh-context-fragments-implementation-steps.zh.md)。
+本包是
+[`dsh-context-fragments`](../../../../.agents/notes/proposed/feature/2026-09-03-dsh-context-fragments.md)
+缝的注册表侧实现。四步实施计划的 Step 1 与 Step 2 在此落地；持久化
+source kind、绑定伴随器以及 spine 快照见 Step 3 与 Step 4。
 
-## 本包当前拥有
+## 接口
 
-- `Fragment<Body>` 贡献模型，含 `role`、`startMarker`、`endMarker`、`order`、`body`。
-- `escapeFrameBody(body, marker)` —— 所有贡献者与未来 binding 共享的规范转义。
-- `RenderedFragment` 与 `FragmentMatch` 值类型。
-- `escapeInstructionFrameBody(body)` —— agent-instructions 的 frame 转义，自第 2 步起由该包导入。
+```ts
+import { apply, FragmentsService, escapeFrameBody } from '@deepseek-ai/dsh-context-fragments'
 
-## 本包当前不拥有
+const ctx = new Context()
+apply(ctx, { defaultRole: 'user' })
 
-- Cordis 插件注册、生命周期监听器或 `apply()`。
-- `MessageSourceMap` 的消费者。`packages/llm/llm/src/context-fragments.d.ts` 中的合并存根仅为标记注释。
-- scope 辅助函数、snapshot 装配或持久化发射。
+ctx.fragments.register({
+  name: 'agent-instructions' as FragmentName,
+  role: 'developer',
+  startMarker: '<system-reminder>',
+  endMarker: '</system-reminder>',
+  order: 0,
+  body: 'remember to be helpful',
+})
+
+const ordered = await ctx.fragments.assemble()
+const rendered = ctx.fragments.render(ordered[0])
+const matches = ctx.fragments.recognize(rendered.text)
+```
+
+服务持有跨作用域链的合并装配；同 `name` 的作用域级片段覆盖全局片段，
+同层的重名与标记对冲突在 `register` 阶段即抛出。`./invariant` 中的
+伴随器捕获单层插入检查看不到的跨层问题。
+
+## 作用域规则
+
+片段沿用 `system-prompt` 的作用域规则：全局贡献 + 作用域键覆盖、最
+近作用域胜出，`register` 返回 Cordis 效应的精确 disposer。已释放的
+片段不会在层中残留；装配瀑布看到的是当前活跃集合。
+
+## 识别
+
+`recognize(text, scope?)` 在文本中按字面子串扫描当前作用域链中每个
+注册片段的 `startMarker` + `endMarker`。每个片段至多贡献一次匹配；
+重叠候选项按注册顺序上报，保证结果确定性。
+
+## 不在范围（Step 3 / Step 4）
+
+- `MessageSourceMap` 上的持久化 source kind，使 agent-loop 能为每个
+  注册片段落盘一条 `user/message`。
+- 把 `ctx.fragments.register` 接入已发布的 agent-instructions 贡献者，
+  且不改动其渲染输出的字节内容的绑定伴随器。
+- 锁定装配、渲染基线的快照测试。
+
+## 配置
+
+`apply(ctx, config)` 接受可选的 `defaultRole`（`'developer' | 'user'`，默认
+`'user'`）。兜底角色通过 `ctx.fragments.resolveDefaultRole()` 暴露，
+贡献者可无需在每个片段上重复声明。
