@@ -137,4 +137,33 @@ describe('Project Reference compiler faces', () => {
       'packages/core/cyclic-consumer/tsconfig.json: Project Reference "../../api/split/tsconfig.host.json" enters split project packages/api/split from a config with no Host/Client face',
     ])
   })
+
+  it('tolerates extends self-cycles when resolving the referencing face', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-self-cycle-'))
+    roots.push(root)
+    const split = join(root, 'packages/api/split')
+    mkdirSync(split, { recursive: true })
+    writeJson(join(split, 'package.json'), { name: '@deepseek-ai/dsh-split' })
+    writeJson(join(split, 'tsconfig.json'), { files: [] })
+    writeJson(join(split, 'tsconfig.host.json'), { references: [] })
+    writeJson(join(split, 'tsconfig.client.json'), { references: [] })
+    const cyclicDir = join(root, 'packages/core/self-cycle-consumer')
+    mkdirSync(cyclicDir, { recursive: true })
+    writeJson(join(cyclicDir, 'package.json'), { name: '@deepseek-ai/dsh-self-cycle-consumer' })
+    writeJson(join(cyclicDir, 'tsconfig.json'), {
+      extends: './tsconfig.self.json',
+      references: [{ path: '../../api/split/tsconfig.host.json' }],
+    })
+    writeJson(join(cyclicDir, 'tsconfig.self.json'), {
+      extends: './tsconfig.self.json',
+    })
+    writeJson(join(root, 'tsconfig.host.json'), {
+      references: [{ path: './packages/core/self-cycle-consumer' }],
+    })
+    writeJson(join(root, 'tsconfig.client.json'), { references: [] })
+
+    expect(collectProjectReferenceFaceViolations(root)).toEqual([
+      'packages/core/self-cycle-consumer/tsconfig.json: Project Reference "../../api/split/tsconfig.host.json" enters split project packages/api/split from a config with no Host/Client face',
+    ])
+  })
 })
