@@ -97,4 +97,44 @@ describe('Project Reference compiler faces', () => {
       'packages/core/host-consumer/tsconfig.json: Project Reference "../../api/split/tsconfig.client.json" enters split project packages/api/split from a Host config; reference "packages/api/split/tsconfig.host.json" instead',
     ])
   })
+
+  it('pins silent-skip of packages that declare only one of the two face configs', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-half-split-'))
+    roots.push(root)
+    const split = join(root, 'packages/api/half-split')
+    mkdirSync(split, { recursive: true })
+    writeJson(join(split, 'package.json'), { name: '@deepseek-ai/dsh-half-split' })
+    writeJson(join(split, 'tsconfig.json'), { files: [] })
+    writeJson(join(split, 'tsconfig.host.json'), { references: [] })
+    writeJson(join(root, 'tsconfig.host.json'), {
+      references: [{ path: './packages/api/half-split' }],
+    })
+    writeJson(join(root, 'tsconfig.client.json'), { references: [] })
+
+    expect(collectProjectReferenceFaceViolations(root)).toEqual([])
+  })
+
+  it('tolerates extends cycles when resolving the referencing face', () => {
+    const root = workspaceFixture({
+      host: ['./packages/core/cyclic-consumer'],
+      client: [],
+    })
+    const cyclicDir = join(root, 'packages/core/cyclic-consumer')
+    mkdirSync(cyclicDir, { recursive: true })
+    writeJson(join(cyclicDir, 'package.json'), { name: '@deepseek-ai/dsh-cyclic-consumer' })
+    writeJson(join(cyclicDir, 'tsconfig.json'), {
+      extends: './tsconfig.cycle-a.json',
+      references: [{ path: '../../api/split/tsconfig.host.json' }],
+    })
+    writeJson(join(cyclicDir, 'tsconfig.cycle-a.json'), {
+      extends: './tsconfig.cycle-b.json',
+    })
+    writeJson(join(cyclicDir, 'tsconfig.cycle-b.json'), {
+      extends: './tsconfig.cycle-a.json',
+    })
+
+    expect(collectProjectReferenceFaceViolations(root)).toEqual([
+      'packages/core/cyclic-consumer/tsconfig.json: Project Reference "../../api/split/tsconfig.host.json" enters split project packages/api/split from a config with no Host/Client face',
+    ])
+  })
 })
