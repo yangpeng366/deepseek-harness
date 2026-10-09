@@ -194,6 +194,10 @@ function expectedDshPackageFiles(manifest: PackageManifest): readonly string[] {
     // A surface bundle's startup row is its own bundle: the Loader imports it
     // as a row module, so it cannot ride inside the package entry.
     ...exportDefault(manifest, './startup') === './lib/startup.js' ? ['lib/startup.js'] : [],
+    // typed-runtime subpaths with their own bundles (single-entry builds; one
+    // bundle per emitted subpath; companions ride the package entry).
+    ...exportDefault(manifest, './escape') === './lib/escape.js' ? ['lib/escape.js'] : [],
+    ...exportDefault(manifest, './registry') === './lib/registry.js' ? ['lib/registry.js'] : [],
     ...extras,
     // Subpaths whose runtime default is the tsc-emitted tree (lib/types/*.js —
     // browser-safe source channels rehomed off src so plain Node can import

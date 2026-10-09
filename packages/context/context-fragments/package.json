@@ -35,8 +35,8 @@
   },
   "files": [
     "lib/index.js",
-    "lib/escape.js",
     "lib/invariant.js",
+    "lib/escape.js",
     "lib/registry.js",
     "lib/types/**/*.d.ts"
   ],
