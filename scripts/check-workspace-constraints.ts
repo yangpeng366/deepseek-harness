@@ -411,10 +411,15 @@ function checkHierarchyShape(): string[] {
   return errors
 }
 
-function checkRepositoryVersion(): string[] {
+/**
+ * Require the repository root version to be a semver release or prerelease.
+ * @param version - Root package version; defaults to the loaded repository version.
+ * @returns One error when the version is missing or not X.Y.Z(-prerelease).
+ */
+export function checkRepositoryVersion(version: string | undefined = repositoryVersion): string[] {
   // The root carries the dsh release family's version, so a prerelease such as
   // 0.0.1-rc.1 is a valid state between `release:dsh` and its publication.
-  if (repositoryVersion && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(repositoryVersion)) return []
+  if (version && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) return []
   return ['package.json: version must be X.Y.Z with an optional prerelease segment']
 }
 
@@ -456,7 +461,7 @@ export function checkExperimentalDependencyIsolation(manifests: readonly Workspa
  * @param manifests - every workspace manifest.
  * @returns One error per reference that names a workspace member without the protocol.
  */
-function checkWorkspaceProtocol(manifests: readonly WorkspaceManifest[]): string[] {
+export function checkWorkspaceProtocol(manifests: readonly WorkspaceManifest[]): string[] {
   const members = new Set(manifests.map(entry => entry.manifest.name).filter(name => name !== undefined))
   const errors: string[] = []
   for (const { dir, manifest } of manifests) {
