@@ -258,7 +258,18 @@ export function checkExperimentalManifest({ dir, manifest }: WorkspaceManifest):
   return errors
 }
 
-function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
+/**
+ * Inspect one workspace manifest against the per-package publication rules.
+ *
+ * The first three segments cover publication access and source URL: published
+ * Landlock packages need a trusted-publishing repository, release members need
+ * a public access and a published-source URL, and any other non-experimental
+ * member must mark itself private. Subsequent segments gate vendored,
+ * forbidden-file, app, landlock, and dsh-* family invariants.
+ * @param entry - Repo-relative dir and parsed package.json of one workspace member.
+ * @returns One error per failed per-package rule; empty when the manifest satisfies them all.
+ */
+export function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
   const errors = checkExperimentalManifest({ dir, manifest })
   const label = manifest.name ?? dir
   const isLandlockPackageDir = dir.startsWith('native/landlock-run/packages/')
@@ -388,10 +399,11 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
 /**
  * Enforce `packages/<group>/<pkg>`: groups are open-named containers without a
  * package.json, and packages may be neither flat nor more deeply nested.
+ * @param packagesRoot - Absolute path of the packages tree; defaults to the repository packages root.
+ * @returns One error per group/package layout violation; empty when the hierarchy conforms.
  */
-function checkHierarchyShape(): string[] {
+export function checkHierarchyShape(packagesRoot: string = join(root, 'packages')): string[] {
   const errors: string[] = []
-  const packagesRoot = join(root, 'packages')
   for (const group of readdirSync(packagesRoot, { withFileTypes: true })) {
     if (!group.isDirectory()) continue
     const groupRel = join('packages', group.name)
