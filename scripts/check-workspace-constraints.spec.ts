@@ -310,3 +310,262 @@ describe('checkWorkspace landlock version sync', () => {
     expect(errors.some(e => e.includes('package.json version must match Landlock workspace version'))).toBe(true)
   })
 })
+
+describe('checkWorkspace dsh-* family invariants', () => {
+  // Baseline: a dsh-* package with all 12 fields + files correctly set.
+  const baseline: WorkspaceManifest['manifest'] = {
+    name: '@deepseek-ai/dsh-test-pkg',
+    version: '0.1.1-rc.2',
+    publishConfig: { access: 'public' },
+    repository: { type: 'git', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'packages/core/dsh-test-pkg' },
+    type: 'module',
+    main: 'lib/index.js',
+    types: 'lib/types/index.d.ts',
+    peerDependencies: { '@deepseek-ai/cordis': 'workspace:^' },
+    devDependencies: { '@deepseek-ai/cordis': 'workspace:^' },
+    exports: {
+      '.': {
+        types: './lib/types/index.d.ts',
+        default: './lib/index.js',
+      },
+      './invariant': {
+        types: './lib/types/invariant.d.ts',
+        default: './lib/invariant.js',
+      },
+    },
+    files: ['lib/index.js', 'lib/invariant.js', 'lib/types/**/*.d.ts'],
+  }
+  const pkgDir = 'packages/core/dsh-test-pkg'
+
+  it('accepts a valid dsh-* member', () => {
+    expect(dropExperimentalNoise(checkWorkspace({ dir: pkgDir, manifest: baseline }))).toEqual([])
+  })
+
+  it('rejects when @deepseek-ai/cordis is missing from peerDependencies', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baseline, peerDependencies: {} },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: @deepseek-ai/cordis must be a peerDependency')
+  })
+
+  it('rejects when @deepseek-ai/cordis is missing from devDependencies', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baseline, devDependencies: {} },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: @deepseek-ai/cordis must also be a devDependency')
+  })
+
+  it('rejects when @deepseek-ai/cordis peer and dev ranges diverge', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baseline,
+        peerDependencies: { '@deepseek-ai/cordis': 'workspace:^' },
+        devDependencies: { '@deepseek-ai/cordis': 'workspace:*' },
+      },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: @deepseek-ai/cordis peer (workspace:^) and dev (workspace:*) ranges must match')
+  })
+
+  it('rejects a dsh-* member whose version drifts from the root version', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baseline, version: '0.0.0-mismatch' },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json version must match root version 0.1.1-rc.2')
+  })
+
+  it('rejects a dsh-* member without type: module', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baseline, type: 'commonjs' },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json must set "type": "module"')
+  })
+
+  it('rejects a dsh-* member with a non-canonical main', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baseline, main: 'lib/wrong.js' },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json must set "main": "lib/index.js"')
+  })
+
+  it('rejects a dsh-* member with a non-canonical types', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baseline, types: 'lib/types/wrong.d.ts' },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json must set "types": "lib/types/index.d.ts"')
+  })
+
+  it('rejects a dsh-* member whose exports["."].types drifts', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baseline,
+        exports: {
+          '.': { types: './lib/types/wrong.d.ts', default: './lib/index.js' },
+          './invariant': { types: './lib/types/invariant.d.ts', default: './lib/invariant.js' },
+        },
+      },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json exports["."].types must be "./lib/types/index.d.ts"')
+  })
+
+  it('rejects a dsh-* member whose exports["."].default drifts', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baseline,
+        exports: {
+          '.': { types: './lib/types/index.d.ts', default: './lib/wrong.js' },
+          './invariant': { types: './lib/types/invariant.d.ts', default: './lib/invariant.js' },
+        },
+      },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json exports["."].default must be "./lib/index.js"')
+  })
+
+  it('rejects a dsh-* member whose exports["./invariant"].types points elsewhere', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baseline,
+        exports: {
+          '.': { types: './lib/types/index.d.ts', default: './lib/index.js' },
+          './invariant': { types: './lib/types/wrong.d.ts', default: './lib/invariant.js' },
+        },
+      },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json exports["./invariant"].types must be "./lib/types/invariant.d.ts"')
+  })
+
+  it('rejects a dsh-* member whose exports["./invariant"].default points elsewhere', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baseline,
+        exports: {
+          '.': { types: './lib/types/index.d.ts', default: './lib/index.js' },
+          './invariant': { types: './lib/types/invariant.d.ts', default: './lib/wrong.js' },
+        },
+      },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json exports["./invariant"].default must be "./lib/invariant.js"')
+  })
+
+  it('rejects a dsh-* member whose exports["./invariant"] declares only types or only default', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baseline,
+        exports: {
+          '.': { types: './lib/types/index.d.ts', default: './lib/index.js' },
+          './invariant': { types: './lib/types/invariant.d.ts' },
+        },
+      },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json exports["./invariant"] must declare both types and default targets')
+  })
+
+  it('rejects a dsh-* member whose files diverge from expectedDshPackageFiles', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baseline, files: ['lib/index.js'] },
+    })))
+    expect(errors).toContain('packages/core/dsh-test-pkg/package.json: @deepseek-ai/dsh-test-pkg: package.json files must be ["lib/index.js","lib/invariant.js","lib/types/**/*.d.ts"]')
+  })
+})
+
+describe('expectedDshPackageFiles conditional branches', () => {
+  const pkgDir = 'packages/core/dsh-test-pkg'
+  const baselineWith = (extra: readonly string[]) => ({
+    name: '@deepseek-ai/dsh-test-pkg',
+    version: '0.1.1-rc.2',
+    publishConfig: { access: 'public' },
+    repository: { type: 'git', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'packages/core/dsh-test-pkg' },
+    type: 'module',
+    main: 'lib/index.js',
+    types: 'lib/types/index.d.ts',
+    peerDependencies: { '@deepseek-ai/cordis': 'workspace:^' },
+    devDependencies: { '@deepseek-ai/cordis': 'workspace:^' },
+    exports: {
+      '.': { types: './lib/types/index.d.ts', default: './lib/index.js' },
+      './invariant': { types: './lib/types/invariant.d.ts', default: './lib/invariant.js' },
+    },
+    files: ['lib/index.js', 'lib/invariant.js', ...extra, 'lib/types/**/*.d.ts'],
+  })
+
+  it('adds lib/bin.js when the manifest declares a bin field', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baselineWith(['lib/bin.js']), bin: { 'dsh-test-pkg': 'lib/bin.js' } },
+    }))).toEqual([])
+  })
+
+  it('adds lib/worker.cjs when exports declare ./worker', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baselineWith(['lib/worker.cjs']),
+        exports: {
+          '.': { types: './lib/types/index.d.ts', default: './lib/index.js' },
+          './invariant': { types: './lib/types/invariant.d.ts', default: './lib/invariant.js' },
+          './worker': './lib/worker.cjs',
+        },
+      },
+    }))).toEqual([])
+  })
+
+  it('adds lib/client.js when exports["./client"].default resolves to ./lib/client.js', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baselineWith(['lib/client.js']),
+        exports: {
+          '.': { types: './lib/types/index.d.ts', default: './lib/index.js' },
+          './invariant': { types: './lib/types/invariant.d.ts', default: './lib/invariant.js' },
+          './client': './lib/client.js',
+        },
+      },
+    }))).toEqual([])
+  })
+
+  it('adds lib/escape.js when exports["./escape"].default is ./lib/escape.js', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baselineWith(['lib/escape.js']),
+        exports: {
+          '.': { types: './lib/types/index.d.ts', default: './lib/index.js' },
+          './invariant': { types: './lib/types/invariant.d.ts', default: './lib/invariant.js' },
+          './escape': './lib/escape.js',
+        },
+      },
+    }))).toEqual([])
+  })
+
+  it('adds dsh.bundle.patch to files when the manifest declares one', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: {
+        ...baselineWith(['patches/extra.cjs']),
+        dsh: { bundle: { patch: './patches/extra.cjs' } },
+      },
+    }))).toEqual([])
+  })
+
+  it('adds packageFileExtras entries for a known package name', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: 'packages/skill/skill-badge',
+      manifest: {
+        ...baselineWith(['assets']),
+        name: '@deepseek-ai/dsh-skill-badge',
+        repository: { type: 'git', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'packages/skill/skill-badge' },
+      },
+    }))).toEqual([])
+  })
+})
