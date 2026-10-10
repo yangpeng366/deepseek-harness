@@ -227,3 +227,86 @@ describe('checkHierarchyShape', () => {
     expect(checkHierarchyShape(tmpDir)).toEqual([])
   })
 })
+
+describe('checkWorkspace vendored skip', () => {
+  it('returns before the apps, forbidden-file, and dsh-* segments for a vendored package', () => {
+    const errors = dropExperimentalNoise(checkWorkspace({
+      dir: 'apps/cordis-bundle',
+      manifest: { name: '@deepseek-ai/cordis' },
+    }))
+    expect(errors.some(e => e.includes('app package has no publication files policy'))).toBe(false)
+    expect(errors.some(e => e.includes('must not publish'))).toBe(false)
+  })
+})
+
+describe('checkWorkspace forbidden publication files', () => {
+  it('rejects a source file under src/ for a non-vendored dsh-family member', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: 'tools/some-dsh-tool',
+      manifest: { name: '@deepseek-ai/dsh-tool', files: ['src/main.ts'] },
+    })))
+    expect(errors).toContain('tools/some-dsh-tool/package.json: @deepseek-ai/dsh-tool: package.json files must not publish "src/main.ts"')
+  })
+})
+
+describe('checkWorkspace app files table', () => {
+  it('accepts a known app package with the canonical files', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: 'apps/dsh',
+      manifest: {
+        name: '@deepseek-ai/dsh',
+        publishConfig: { access: 'public' },
+        repository: { type: 'git', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'apps/dsh' },
+        files: ['lib/*.js', 'config'],
+      },
+    }))).toEqual([])
+  })
+
+  it('rejects a known app package with mismatched files', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: 'apps/dsh',
+      manifest: {
+        name: '@deepseek-ai/dsh',
+        publishConfig: { access: 'public' },
+        repository: { type: 'git', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'apps/dsh' },
+        files: ['lib/index.js'],
+      },
+    })))
+    expect(errors).toContain('apps/dsh/package.json: @deepseek-ai/dsh: package.json files must be ["lib/*.js","config"]')
+  })
+
+  it('rejects an app package whose name is not in the apps table', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: 'apps/some-app',
+      manifest: {
+        name: '@deepseek-ai/dsh-some-app',
+        publishConfig: { access: 'public' },
+        repository: { type: 'git', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'apps/some-app' },
+      },
+    })))
+    expect(errors).toContain('apps/some-app/package.json: @deepseek-ai/dsh-some-app: app package has no publication files policy')
+  })
+})
+
+describe('checkWorkspace landlock version sync', () => {
+  it('rejects a non-public package under native/landlock-run/packages/', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: 'native/landlock-run/packages/not-public',
+      manifest: { name: '@deepseek-ai/dsh-not-landlock' },
+    })))
+    expect(errors).toContain('native/landlock-run/packages/not-public/package.json: @deepseek-ai/dsh-not-landlock: unexpected package in the public Landlock package family')
+  })
+
+  it('rejects a public Landlock package whose version drifts from the workspace version', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: 'native/landlock-run/packages/linux-x64',
+      manifest: {
+        name: '@deepseek-ai/node-addon-landlock-run-linux-x64',
+        version: '9.9.9-not-matching',
+        publishConfig: { access: 'public' },
+        repository: { type: 'git', url: 'git+https://github.com/deepseek-harness/deepseek-harness.git', directory: 'native/landlock-run/packages/linux-x64' },
+      },
+    })))
+    expect(errors.some(e => e.includes('package.json version must match Landlock workspace version'))).toBe(true)
+  })
+})
