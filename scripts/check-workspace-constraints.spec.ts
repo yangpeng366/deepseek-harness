@@ -613,3 +613,44 @@ describe('expectedDshPackageFiles conditional branches', () => {
     }))).toEqual([])
   })
 })
+
+describe('checkWorkspace release-member repository variants', () => {
+  const validManifest: WorkspaceManifest['manifest'] = {
+    name: '@deepseek-ai/dsh-dummy',
+    publishConfig: { access: 'public' },
+    repository: { type: 'git', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'vendor/dummy' },
+  }
+
+  it('rejects a release member whose repository directory does not match its dir', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: 'vendor/dummy',
+      manifest: { ...validManifest, repository: { type: 'git', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'vendor/other' } },
+    })))
+    expect(errors).toContain('vendor/dummy/package.json: @deepseek-ai/dsh-dummy: release member repository must use git+https://github.com/deepseek-ai/deepseek-harness.git with directory vendor/dummy')
+  })
+
+  it('rejects a release member whose repository type is not git', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: 'vendor/dummy',
+      manifest: { ...validManifest, repository: { type: 'svn', url: 'git+https://github.com/deepseek-ai/deepseek-harness.git', directory: 'vendor/dummy' } },
+    })))
+    expect(errors).toContain('vendor/dummy/package.json: @deepseek-ai/dsh-dummy: release member repository must use git+https://github.com/deepseek-ai/deepseek-harness.git with directory vendor/dummy')
+  })
+})
+
+describe('checkWorkspace non-release private rule on a wholly unknown dir', () => {
+  it('requires private=true for a member under a dir that matches no pattern', () => {
+    const errors = normalizePath(dropExperimentalNoise(checkWorkspace({
+      dir: 'notes/scratch',
+      manifest: { name: '@deepseek-ai/dsh-dummy' },
+    })))
+    expect(errors).toContain('notes/scratch/package.json: @deepseek-ai/dsh-dummy: package.json must set "private": true')
+  })
+
+  it('accepts private=true for a member under a wholly unknown dir', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: 'notes/scratch',
+      manifest: { name: '@deepseek-ai/dsh-dummy', private: true },
+    }))).toEqual([])
+  })
+})
