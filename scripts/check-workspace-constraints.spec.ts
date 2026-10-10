@@ -612,6 +612,27 @@ describe('expectedDshPackageFiles conditional branches', () => {
       },
     }))).toEqual([])
   })
+
+  it('adds lib/bin.js when bin is a bare string (not a Record)', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baselineWith(['lib/bin.js']), bin: 'lib/bin.js' },
+    }))).toEqual([])
+  })
+
+  it('omits lib/bin.js when bin is the empty string', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baselineWith([]), bin: '' },
+    }))).toEqual([])
+  })
+
+  it('emits lib/bin.js even when bin is an empty Record (truthy gate)', () => {
+    expect(dropExperimentalNoise(checkWorkspace({
+      dir: pkgDir,
+      manifest: { ...baselineWith(['lib/bin.js']), bin: {} },
+    }))).toEqual([])
+  })
 })
 
 describe('checkWorkspace release-member repository variants', () => {
