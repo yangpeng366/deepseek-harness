@@ -12,10 +12,11 @@ import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { FragmentsService } from '../src/registry.ts'
+import type { FragmentName } from '../src/index.ts'
 import { apply as applyInvariant } from '../src/invariant.ts'
 
 const agentInstructions = {
-  name: 'agent-instructions',
+  name: 'agent-instructions' as FragmentName,
   role: 'developer' as const,
   startMarker: '<system-reminder>',
   endMarker: '</system-reminder>',
