@@ -139,6 +139,50 @@ describe('workspace protocol constraint', () => {
       '@deepseek-ai/dsh-b: dependencies.@deepseek-ai/dsh-a must use the workspace: protocol, got ^1.0.0',
     ])
   })
+
+  it.each(['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const)(
+    'rejects a bare range in %s that names a workspace member',
+    (section) => {
+      expect(checkWorkspaceProtocol([memberA, {
+        ...memberB,
+        manifest: {
+          ...memberB.manifest,
+          [section]: { '@deepseek-ai/dsh-a': '^1.0.0' },
+        },
+      }])).toEqual([
+        `@deepseek-ai/dsh-b: ${section}.@deepseek-ai/dsh-a must use the workspace: protocol, got ^1.0.0`,
+      ])
+    },
+  )
+
+  it('accepts a manifest that declares no dependency section', () => {
+    expect(checkWorkspaceProtocol([memberA, memberB])).toEqual([])
+  })
+
+  it('collects one error per offending range across sections', () => {
+    expect(checkWorkspaceProtocol([memberA, {
+      ...memberB,
+      manifest: {
+        ...memberB.manifest,
+        dependencies: { '@deepseek-ai/dsh-a': '^1.0.0' },
+        devDependencies: { '@deepseek-ai/dsh-a': '^1.0.0' },
+      },
+    }])).toEqual([
+      '@deepseek-ai/dsh-b: dependencies.@deepseek-ai/dsh-a must use the workspace: protocol, got ^1.0.0',
+      '@deepseek-ai/dsh-b: devDependencies.@deepseek-ai/dsh-a must use the workspace: protocol, got ^1.0.0',
+    ])
+  })
+
+  it('falls back to dir in the error label when manifest has no name', () => {
+    expect(checkWorkspaceProtocol([memberA, {
+      dir: 'packages/core/unnamed',
+      manifest: {
+        dependencies: { '@deepseek-ai/dsh-a': '^1.0.0' },
+      },
+    }])).toEqual([
+      'packages/core/unnamed: dependencies.@deepseek-ai/dsh-a must use the workspace: protocol, got ^1.0.0',
+    ])
+  })
 })
 
 const dropExperimentalNoise = (errors: string[]) => errors.filter(error => !error.includes('experimental package'))
